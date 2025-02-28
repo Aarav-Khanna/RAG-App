@@ -1,13 +1,13 @@
-FROM public.ecr.aws/docker/library/python:3.11-slim-bookworm as base
+FROM public.ecr.aws/docker/library/python:3.11-slim-bookworm AS base
 
 RUN apt-get update \
     && apt-get install -y \
-        curl \
-        git \
-        unzip \
-        vim \
-        wget \
-        gcc \
+    curl \
+    git \
+    unzip \
+    vim \
+    wget \
+    gcc \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean 
 
@@ -22,7 +22,7 @@ RUN poetry install --no-dev --no-interaction --no-ansi --no-root -vv \
     && rm -rf /root/.cache/pypoetry
 
 # Dev Container
-FROM base as devcontainer
+FROM base AS devcontainer
 
 RUN apt-get update \
     && apt-get install -y \

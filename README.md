@@ -1,8 +1,6 @@
 ---
 
-# 📌 INFO-5940
-
-Welcome to the **INFO-5940** repository! This guide will help you set up the development environment using **Docker** in **VS Code**, configure the **OpenAI API key**, manage Git branches, and run Jupyter notebooks for assignments.  
+# 📌 RAG App
 
 ---
 
@@ -25,15 +23,15 @@ Before starting, ensure you have the following installed on your system:
 Open a terminal and run:  
 
 ```bash
-git clone https://github.com/AyhamB/INFO-5940.git
-cd INFO-5940
+git clone https://github.com/Aarav-Khanna/RAG-App.git
+cd RAG-App
 ```
 
 ---
 
 ### 2️⃣ Open in VS Code with Docker  
 
-1. Open **VS Code**, navigate to the `INFO-5940` folder.  
+1. Open **VS Code**, navigate to the `RAG-App` folder.  
 2. Open the Command Palette (`Ctrl+Shift+P` or `Cmd+Shift+P` on Mac) and search for:  
    ```
    Remote-Containers: Reopen in Container
@@ -48,7 +46,7 @@ cd INFO-5940
 
 Since `docker-compose.yml` expects environment variables, follow these steps:  
 
-#### ➤ Option 1: Set the API Key in `.env` (Recommended)  
+#### ➤ Set the API Key in `.env` (Recommended)  
 
 1. Inside the project folder, create a `.env` file:  
 
@@ -64,28 +62,7 @@ Since `docker-compose.yml` expects environment variables, follow these steps:
    TZ=America/New_York
    ```
 
-3. Modify `docker-compose.yml` to include this `.env` file:  
-
-   ```yaml
-   version: '3.8'
-   services:
-     devcontainer:
-       container_name: info-5940-devcontainer
-       build:
-         dockerfile: Dockerfile
-         target: devcontainer
-       environment:
-         - OPENAI_API_KEY=${OPENAI_API_KEY}
-         - OPENAI_BASE_URL=${OPENAI_BASE_URL}
-         - TZ=${TZ}
-       volumes:
-         - '$HOME/.aws:/root/.aws'
-         - '.:/workspace'
-       env_file:
-         - .env
-   ```
-
-4. Restart the container:  
+3. Restart the container:  
 
    ```bash
    docker-compose up --build
@@ -94,95 +71,46 @@ Since `docker-compose.yml` expects environment variables, follow these steps:
 Now, your API key will be automatically loaded inside the container.  
 
 ---
+## Overview of RAG App  
 
-## 🔀 Managing Git Branches in VS Code  
+This application demonstrates **Retrieval Augmented Generation (RAG)** using **LangChain** and **OpenAI**. Below is a high-level overview of the main steps performed in the `rag_app.py` code:
 
-Since you may need to switch between different branches for assignments, here’s how to manage Git branches in **VS Code** efficiently.  
+1. **File Upload**  
+   - Users can upload multiple PDF or TXT files simultaneously through Streamlit’s `file_uploader`.
+   - The application detects the file type and uses an appropriate parser:
+     - **PDF**: Parsed by iterating over each page using `PdfReader`.
+     - **TXT**: Simply decoded as UTF-8 text.
 
-### **Option 1: Using the Git Panel (Easiest)**
-1. Open **VS Code**.
-2. Click on the **Source Control** panel on the left (`Ctrl+Shift+G` / `Cmd+Shift+G` on Mac).
-3. Click on the **branch name** (bottom-left corner of VS Code).
-4. A dropdown will appear with all available branches.
-5. Select the branch you want to switch to.  
+2. **Chunking and Text Splitting**  
+   - Each document’s text is broken into smaller, more manageable pieces (chunks) via the `RecursiveCharacterTextSplitter`.
+   - You can control the chunk size (`chunk_size=100` in the example) and overlap (`chunk_overlap=10`). This helps maintain context between chunks.
 
-### **Option 2: Using Command Palette**
-1. Open **VS Code**.
-2. Press `Ctrl+Shift+P` (`Cmd+Shift+P` on Mac) to open the **Command Palette**.
-3. Type **"Git: Checkout to..."** and select it.
-4. Pick the branch you want to switch to.
+3. **Embedding & Vector Storage**  
+   - The text chunks are embedded using an OpenAI embedding model (`openai.text-embedding-3-large`).
+   - These embeddings are stored in a **Chroma** in-memory vector database, which allows for fast similarity searches later on.
 
-### **Option 3: Using the Terminal**
-If you prefer the command line inside the container, use:
+4. **User Queries & Similarity Search**  
+   - When a user asks a question in the Streamlit chat input:
+     1. The question is used to query the vector database.
+     2. The database returns the top-k most relevant chunks (`k=3` by default).
 
+5. **OpenAI GPT-4 Prompt Construction**  
+   - The retrieved chunks are combined into a “Context” block, which is then passed to the GPT-4 model (or `openai.gpt-4o` in the example code) along with the user’s question. 
+   - This ensures that GPT-4 has direct, relevant context at prompt time, increasing the accuracy and relevance of its response.
+
+6. **Answer Generation**  
+   - GPT-4 generates a response (`ChatCompletion` endpoint).
+   - The final answer is displayed in the Streamlit chat interface, preserving the conversational flow.
+
+Overall, this **RAG** workflow enables the model to reference specific, retrieved pieces of text from your uploaded documents rather than requiring the entire file content in each prompt—leading to more efficient and contextually grounded responses. 
+
+Once your container is running and you execute:
 ```bash
-git branch   # View all branches
-git checkout branch-name   # Switch to a branch
-git pull origin branch-name   # Update the branch (recommended)
+streamlit run rag_app.py
 ```
+you’ll be able to open your browser (typically at `http://localhost:8501`) to:
+- Upload documents (.pdf or .txt),
+- **Process** them to create embeddings,
+- **Ask questions** in the chat interface,
+- And receive answers derived from the specific content of those documents.
 
-📌 **Tip:** If you are working on a new feature, create a new branch before making changes:
-
-```bash
-git checkout -b new-feature-branch
-```
-
----
-
-## 🏃 Running Jupyter Notebook From Outside VS Code
-
-Once inside the **VS Code Dev Container**, you should be able to run the notebooks from the IDE but you can also launch the Jupyter Notebook server:  
-
-```bash
-jupyter notebook --ip 0.0.0.0 --port=8888 --no-browser --allow-root
-```
-
----
-
-### 5️⃣ Access Jupyter Notebook  
-
-When the notebook starts, it will output a URL like this:  
-
-```
-http://127.0.0.1:8888/?token=your_token_here
-```
-
-Copy and paste this link into your browser to access the Jupyter Notebook interface.  
-
----
-
-## 🛠️ Troubleshooting  
-
-### **Container Fails to Start?**  
-- Ensure **Docker Desktop is running**.  
-- Run `docker-compose up --build` again.  
-- If errors persist, delete existing containers with:  
-
-  ```bash
-  docker-compose down
-  ```
-
-  Then restart:  
-
-  ```bash
-  docker-compose up --build
-  ```
-
-### **Cannot Access Jupyter Notebook from outside VS Code?**  
-- Ensure you’re using the correct port (`8888`).  
-- Run `docker ps` to check if the container is running.  
-
-### **OpenAI API Key Not Recognized?**  
-- Check if `.env` is correctly created.  
-- Ensure `docker-compose.yml` includes `env_file: - .env`.  
-- Restart the container after making changes (`docker-compose up --build`).  
-
----
-
-## 🎯 Next Steps  
-
-- Complete assignments using the Jupyter Notebook.  
-- Use the **OpenAI API** inside Python scripts within the container.  
-- Switch between **Git branches** as needed for different assignments.  
-
-Happy coding! 🚀
